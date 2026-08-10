@@ -1,0 +1,20 @@
+import * as z from "zod";
+
+// POST /api/lists のリクエストボディを検証するスキーマ。
+// TypeScript の型は実行時に消えるため、外部から来る JSON は Zod で実際に検証する。
+export const createListSchema = z.object({
+  // 必須。前後の空白を除いたうえで1文字以上を要求する(" " だけの入力を弾くため)
+  title: z
+    .string("title は文字列で指定してください")
+    .trim()
+    .min(1, "title は必須です"),
+
+  // 任意。省略された場合は undefined になり、Prisma 側ではそのカラムを指定しない扱いになる
+  description: z
+    .string("description は文字列で指定してください")
+    .trim()
+    .optional(),
+});
+
+// スキーマから型を導出する。型を手書きすると検証とのズレが発生するため、必ず infer を使う
+export type CreateListInput = z.infer<typeof createListSchema>;
