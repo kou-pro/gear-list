@@ -18,3 +18,10 @@ export const createListSchema = z.object({
 
 // スキーマから型を導出する。型を手書きすると検証とのズレが発生するため、必ず infer を使う
 export type CreateListInput = z.infer<typeof createListSchema>;
+
+export const listIdParamSchema = z.object({
+  id: z.coerce
+    .number("id は数値で指定してください")
+    .int("idは整数で指定してください")
+    .positive("id は1以上で指定してください"),
+});
