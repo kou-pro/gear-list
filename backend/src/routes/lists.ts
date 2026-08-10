@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { prisma } from "../lib/prisma.js";
-import { createListSchema } from "../schemas/list.js";
+import { createListSchema, listIdParamSchema } from "../schemas/list.js";
 
 const app = new Hono();
 
@@ -10,6 +10,37 @@ app.get("/", async (c) => {
   const lists = await prisma.gearList.findMany();
   return c.json(lists);
 });
+
+// GET /:id — 実際のURLは GET /api/lists/:id
+app.get(
+  "/:id",
+  zValidator("param", listIdParamSchema, (result, c) => {
+    if (!result.success) {
+      const message = result.error.issues
+        .map((issue) => issue.message)
+        .join(", ");
+      return c.json({ error: message }, 400);
+    }
+  }),
+  async (c) => {
+    // valid("param") が返すのは { id: number } というオブジェクト。
+    // 分割代入で中の id だけを取り出す
+    const { id } = c.req.valid("param");
+
+    // include で GearList に紐づく GearItem も一緒に取得する(Rails の includes 相当)
+    const list = await prisma.gearList.findUnique({
+      where: { id },
+      include: { items: true },
+    });
+
+    // findUnique は見つからないとき例外ではなく null を返すので、自分で 404 に変換する
+    if (!list) {
+      return c.json({ error: "リストが見つかりません" }, 404);
+    }
+
+    return c.json(list);
+  },
+);
 
 // POST / — 実際のURLは POST /api/lists
 app.post(
