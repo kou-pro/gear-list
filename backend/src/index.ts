@@ -4,8 +4,11 @@ import "dotenv/config";
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import listsRoute from "./routes/lists.js";
+import { cors } from "hono/cors";
 
 const app = new Hono();
+
+app.use("/api/*", cors({ origin: "http://localhost:3000" }));
 
 app.get("/api/health", (c) => {
   return c.json({ status: "ok" });
