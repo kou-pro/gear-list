@@ -1,0 +1,11 @@
+{
+  // seed.ts 用の設定。backend/tsconfig.json は include が src だけのため、
+  // prisma/ 配下はどのプロジェクトにも属さず、エディタが types: ["node"] を適用できない。
+  // 親設定を継承しつつ、このディレクトリを型チェックの対象にする(ビルド対象にはしない)
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "..",
+    "noEmit": true
+  },
+  "include": ["./**/*.ts"]
+}
