@@ -1,7 +1,9 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { prisma } from "../lib/prisma.js";
-import { createListSchema, listIdParamSchema } from "../schemas/list.js";
+import { createListSchema, listIdParamSchema, updateListSchema } from "../schemas/list.js";
+import { validationHook } from "../lib/validation.js";
+import { PrismaClientKnownRequestError } from "../generated/prisma/internal/prismaNamespace.js";
 
 const app = new Hono();
 
@@ -14,14 +16,7 @@ app.get("/", async (c) => {
 // GET /:id — 実際のURLは GET /api/lists/:id
 app.get(
   "/:id",
-  zValidator("param", listIdParamSchema, (result, c) => {
-    if (!result.success) {
-      const message = result.error.issues
-        .map((issue) => issue.message)
-        .join(", ");
-      return c.json({ error: message }, 400);
-    }
-  }),
+  zValidator("param", listIdParamSchema, validationHook),
   async (c) => {
     // valid("param") が返すのは { id: number } というオブジェクト。
     // 分割代入で中の id だけを取り出す
@@ -45,23 +40,69 @@ app.get(
 // POST / — 実際のURLは POST /api/lists
 app.post(
   "/",
-  // 第3引数の hook は検証に失敗したときだけ呼ばれる。
-  // ここで何も返さないと Zod 既定の形式で 400 が返るため、
-  // REQUIREMENTS.md のエラー形式 { error: "..." } に揃える。
-  zValidator("json", createListSchema, (result, c) => {
-    if (!result.success) {
-      const message = result.error.issues
-        .map((issue) => issue.message)
-        .join(", ");
-      return c.json({ error: message }, 400);
-    }
-  }),
+  zValidator("json", createListSchema, validationHook),
   async (c) => {
     // 検証済み・型付きのデータを取り出す(生の c.req.json() ではない)
     const data = c.req.valid("json");
     const created = await prisma.gearList.create({ data });
     // REQUIREMENTS.md の指定どおり、作成成功は 201 を返す
     return c.json(created, 201);
+  },
+);
+
+// PATCH /:id — 実際のURLは PATCH /api/lists/:id
+app.patch(
+  "/:id",
+  // URL の :id と JSON ボディの両方を検証するので zValidator を2つ並べる
+  zValidator("param", listIdParamSchema, validationHook),
+  zValidator("json", updateListSchema, validationHook),
+  async (c) => {
+    const { id } = c.req.valid("param");
+    const data = c.req.valid("json");
+
+    try {
+      // 省略されたフィールドは undefined のまま渡り、Prisma 側でそのカラムを更新対象から除外する。
+      // 明示的な null はそのまま NULL として更新される
+      const updated = await prisma.gearList.update({ where: { id }, data });
+      return c.json(updated);
+    } catch (err) {
+      // 対象レコードが存在しないとき Prisma は P2025 を投げる
+      if (
+        err instanceof PrismaClientKnownRequestError &&
+        err.code === "P2025"
+      ) {
+        return c.json({ error: "リストが見つかりません" }, 404);
+      }
+      // 想定外のエラーを 404 に潰すと障害の原因が隠れるため、そのまま投げ直す
+      throw err;
+    }
+  },
+);
+
+// DELETE /:id — 実際のURLは DELETE /api/lists/:id
+app.delete(
+  "/:id",
+  // ボディを持たないリクエストなので、検証するのは URL の :id だけ
+  zValidator("param", listIdParamSchema, validationHook),
+  async (c) => {
+    const { id } = c.req.valid("param");
+
+    try {
+      // 所属する GearItem はスキーマの onDelete: Cascade により DB 側で連動削除される
+      await prisma.gearList.delete({ where: { id } });
+      // 204 No Content はボディを持てないため c.json() ではなく c.body(null, 204) を使う
+      return c.body(null, 204);
+    } catch (err) {
+      // 対象レコードが存在しないとき Prisma は P2025 を投げる
+      if (
+        err instanceof PrismaClientKnownRequestError &&
+        err.code === "P2025"
+      ) {
+        return c.json({ error: "リストが見つかりません" }, 404);
+      }
+      // 想定外のエラーを 404 に潰すと障害の原因が隠れるため、そのまま投げ直す
+      throw err;
+    }
   },
 );
 
