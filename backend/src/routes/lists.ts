@@ -2,6 +2,11 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { prisma } from "../lib/prisma.js";
 import { createListSchema, listIdParamSchema, updateListSchema } from "../schemas/list.js";
+// schemas/list.ts の listIdParamSchema と名前が衝突するため as で別名を付ける
+import {
+  createItemSchema,
+  listIdParamSchema as itemsListIdParamSchema,
+} from "../schemas/item.js";
 import { validationHook } from "../lib/validation.js";
 import { PrismaClientKnownRequestError } from "../generated/prisma/internal/prismaNamespace.js";
 
@@ -101,6 +106,36 @@ app.delete(
         return c.json({ error: "リストが見つかりません" }, 404);
       }
       // 想定外のエラーを 404 に潰すと障害の原因が隠れるため、そのまま投げ直す
+      throw err;
+    }
+  },
+);
+
+// POST /:listId/items — 実際のURLは POST /api/lists/:listId/items
+app.post(
+  "/:listId/items",
+  zValidator("param", itemsListIdParamSchema, validationHook),
+  zValidator("json", createItemSchema, validationHook),
+  async (c) => {
+    const { listId } = c.req.valid("param");
+    const data = c.req.valid("json");
+
+    try {
+      // ...data で name / quantity を展開し、外部キーの gearListId を付け足す。
+      // quantity が未指定なら undefined のまま渡り、DB の @default(1) が入る
+      const created = await prisma.gearItem.create({
+        data: { ...data, gearListId: listId },
+      });
+      return c.json(created, 201);
+    } catch (err) {
+      // 親リストが存在しない場合、対象レコード不在(P2025)ではなく
+      // 外部キー制約違反(P2003)が投げられる
+      if (
+        err instanceof PrismaClientKnownRequestError &&
+        err.code === "P2003"
+      ) {
+        return c.json({ error: "リストが見つかりません" }, 404);
+      }
       throw err;
     }
   },
