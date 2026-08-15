@@ -14,7 +14,9 @@ const app = new Hono();
 
 // GET / — index.ts 側で /api/lists にマウントされるので、実際のURLは GET /api/lists
 app.get("/", async (c) => {
-  const lists = await prisma.gearList.findMany();
+  // orderBy が無いと PostgreSQL は物理格納順で返し、UPDATE された行が末尾へ移動して
+  // 画面上の並びが不安定になるため、id 順を明示する
+  const lists = await prisma.gearList.findMany({ orderBy: { id: "asc" } });
   return c.json(lists);
 });
 
@@ -27,10 +29,11 @@ app.get(
     // 分割代入で中の id だけを取り出す
     const { id } = c.req.valid("param");
 
-    // include で GearList に紐づく GearItem も一緒に取得する(Rails の includes 相当)
+    // include で GearList に紐づく GearItem も一緒に取得する(Rails の includes 相当)。
+    // items にも orderBy を指定。無いとチェック(UPDATE)のたびに行が末尾へ移動してしまう
     const list = await prisma.gearList.findUnique({
       where: { id },
-      include: { items: true },
+      include: { items: { orderBy: { id: "asc" } } },
     });
 
     // findUnique は見つからないとき例外ではなく null を返すので、自分で 404 に変換する
