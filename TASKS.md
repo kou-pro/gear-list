@@ -115,10 +115,10 @@ Priority 4: (余裕があれば) AWS SQS など実務に近い構成
 |---|---|---|
 | 1-1 | 現状調査(既存コード・依存・スキーマの確認) | ✅ 完了 |
 | 1-2 | 認証方式の選定(候補比較 → 相談 → 決定) | ✅ 完了 → **DBセッション + HttpOnly Cookie / SameSite=None / 既存データは削除して再seed** |
-| 1-3 | User / Session モデル設計、Prisma schema 変更案の確認 | ⬜ **← いまここ** |
-| 1-4 | マイグレーション実行、既存 GearList との関連付け方針の確定 | ⬜ |
-| 1-5 | パスワードハッシュの実装(ライブラリ選定 → ハッシュ化 → 検証) | ⬜ |
-| 1-6 | ユーザー登録 API(`POST /api/auth/signup`) | ⬜ |
+| 1-3 | User / Session モデル設計、Prisma schema 変更案の確認 | ✅ 完了 |
+| 1-4 | マイグレーション実行、既存 GearList との関連付け方針の確定 | ✅ 完了(`20260819122713_add_user_and_session`。既存3行は reset で破棄) |
+| 1-5 | パスワードハッシュの実装(ライブラリ選定 → ハッシュ化 → 検証) | ✅ 完了(`lib/password.ts`。scrypt / salt 16B / timingSafeEqual。seed も対応) |
+| 1-6 | ユーザー登録 API(`POST /api/auth/signup`) | ⬜ **← いまここ** |
 | 1-7 | ログイン API(`POST /api/auth/login`)+ Cookie 発行 | ⬜ |
 | 1-8 | ログアウト API(`POST /api/auth/logout`)+ Cookie 削除・セッション破棄 | ⬜ |
 | 1-9 | 現在のユーザー取得 API(`GET /api/auth/me`) | ⬜ |

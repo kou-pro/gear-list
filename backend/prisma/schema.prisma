@@ -14,13 +14,44 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id           Int        @id @default(autoincrement())
+  email        String     @unique
+  // 平文は絶対に保存しない。カラム名で「ハッシュしか入らない」ことを明示する
+  passwordHash String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  gearLists    GearList[]
+  sessions     Session[]
+}
+
+// 「ログイン中である」という事実を保持するテーブル。
+// Cookie には id(乱数)だけを載せ、どのユーザーかの対応はこのテーブルが持つ。
+model Session {
+  // @default を付けないのは、推測不能な乱数をアプリ側で生成して入れるため
+  // (連番だと他人のセッションIDを推測できてしまう)
+  id        String   @id
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Cookie の有効期限はクライアント側にあり改ざんできるため、サーバー側でも期限を持つ
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
 model GearList {
   id          Int        @id @default(autoincrement())
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      Int
   title       String
   description String?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
   items       GearItem[]
+
+  // 認証後は where: { userId } で毎回絞り込むため、外部キーにインデックスを張る
+  @@index([userId])
 }
 
 model GearItem {

@@ -1,15 +1,31 @@
 // DATABASE_URL を読むために必要(index.ts と同じ理由で先頭に置く)
 import "dotenv/config";
 import { prisma } from "../src/lib/prisma.js";
+import { hashPassword } from "../src/lib/password.js";
+
+// 開発専用のテストユーザー。本番環境では絶対に使わないこと
+const TEST_EMAIL = "test@example.com";
+const TEST_PASSWORD = "password123";
 
 async function main() {
   // ── 何度実行しても同じ結果になるよう、先に全消しする(冪等性の確保) ──
-  // GearItem を消すコードは不要: GearList の削除に onDelete: Cascade が連動するため
-  await prisma.gearList.deleteMany();
+  // User を消せば GearList・GearItem・Session も onDelete: Cascade で連動して消える。
+  // 削除の起点が GearList から User に変わった点に注意
+  await prisma.user.deleteMany();
+
+  // パスワードは平文のまま DB に入れない。必ずハッシュ化してから保存する
+  const user = await prisma.user.create({
+    data: {
+      email: TEST_EMAIL,
+      passwordHash: await hashPassword(TEST_PASSWORD),
+    },
+  });
 
   // ── リスト + 所属アイテムを nested write で一括作成 ──
+  // userId で作成したユーザーに紐付ける(GearList は必ず所有者を持つ)
   await prisma.gearList.create({
     data: {
+      userId: user.id,
       title: "夏山日帰り",
       description: "無雪期の日帰り登山を想定",
       items: {
@@ -44,6 +60,7 @@ async function main() {
 
   await prisma.gearList.create({
     data: {
+      userId: user.id,
       title: "冬山日帰り",
       description: "積雪期の日帰り登山を想定",
       items: {
@@ -78,6 +95,7 @@ async function main() {
   });
 
   console.log("シードデータの投入が完了しました");
+  console.log(`  テストユーザー: ${TEST_EMAIL} / ${TEST_PASSWORD}(開発専用)`);
 }
 
 main()
