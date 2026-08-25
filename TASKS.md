@@ -118,11 +118,11 @@ Priority 4: (余裕があれば) AWS SQS など実務に近い構成
 | 1-3 | User / Session モデル設計、Prisma schema 変更案の確認 | ✅ 完了 |
 | 1-4 | マイグレーション実行、既存 GearList との関連付け方針の確定 | ✅ 完了(`20260819122713_add_user_and_session`。既存3行は reset で破棄) |
 | 1-5 | パスワードハッシュの実装(ライブラリ選定 → ハッシュ化 → 検証) | ✅ 完了(`lib/password.ts`。scrypt / salt 16B / timingSafeEqual。seed も対応) |
-| 1-6 | ユーザー登録 API(`POST /api/auth/signup`) | ⬜ **← いまここ** |
-| 1-7 | ログイン API(`POST /api/auth/login`)+ Cookie 発行 | ⬜ |
-| 1-8 | ログアウト API(`POST /api/auth/logout`)+ Cookie 削除・セッション破棄 | ⬜ |
-| 1-9 | 現在のユーザー取得 API(`GET /api/auth/me`) | ⬜ |
-| 1-10 | 認証 Middleware(未ログインは 401) | ⬜ |
+| 1-6 | ユーザー登録 API(`POST /api/auth/signup`) | ✅ 完了(201 / 409 重複 / 400。登録後そのままログイン状態にする) |
+| 1-7 | ログイン API(`POST /api/auth/login`)+ Cookie 発行 | ✅ 完了(毎回新セッション発行=固定化対策。失敗理由を文面・時間とも秘匿) |
+| 1-8 | ログアウト API(`POST /api/auth/logout`)+ Cookie 削除・セッション破棄 | ✅ 完了(204。DB のセッションも破棄) |
+| 1-9 | 現在のユーザー取得 API(`GET /api/auth/me`) | ✅ 完了(200 / 401) |
+| 1-10 | 認証 Middleware(未ログインは 401) | ⬜ **← いまここ** |
 | 1-11 | GearList と User の関連付け(既存データの扱いを含む) | ⬜ |
 | 1-12 | Authorization(所有者チェック。他人のデータは 403 または 404) | ⬜ |
 | 1-13 | GearItem へのアクセス制御(親リストの所有者経由で判定) | ⬜ |
