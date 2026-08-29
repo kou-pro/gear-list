@@ -16,6 +16,8 @@ const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
 export type SessionUser = {
   id: number;
   email: string;
+  // メールアドレス確認済みか。フロントが「未確認」バッジの表示判断に使う
+  emailVerified: boolean;
 };
 
 // ログイン成功時に呼ぶ。新しいセッションを1件発行する
@@ -61,7 +63,11 @@ export async function validateSession(
 
   // session.user をそのまま返すと passwordHash まで含まれてしまうため、
   // 必要なフィールドだけを取り出して返す
-  return { id: session.user.id, email: session.user.email };
+  return {
+    id: session.user.id,
+    email: session.user.email,
+    emailVerified: session.user.emailVerifiedAt !== null,
+  };
 }
 
 // ログアウト時に呼ぶ。該当セッションを破棄する
