@@ -15,14 +15,31 @@ datasource db {
 }
 
 model User {
-  id           Int        @id @default(autoincrement())
-  email        String     @unique
+  id                 Int                 @id @default(autoincrement())
+  email              String              @unique
   // 平文は絶対に保存しない。カラム名で「ハッシュしか入らない」ことを明示する
-  passwordHash String
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  gearLists    GearList[]
-  sessions     Session[]
+  passwordHash       String
+  // メールアドレス確認が完了した日時。null = 未確認。
+  // Boolean ではなく DateTime? にすることで「確認済みか」と「いつ確認したか」を1カラムで表す
+  emailVerifiedAt    DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  gearLists          GearList[]
+  sessions           Session[]
+  verificationTokens VerificationToken[]
+}
+
+// メールアドレス確認用のトークン。設計は Session と同じパターン:
+// 推測不能な乱数を DB に保存し、リンクを開けた(=トークンを提示できた)人を
+// メールの持ち主とみなす。トークンはメールを受信できた人しか知りえない
+model VerificationToken {
+  id        String   @id // 乱数32バイトをアプリ側で生成(@default を付けない)
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime // 24時間で失効
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 // 「ログイン中である」という事実を保持するテーブル。

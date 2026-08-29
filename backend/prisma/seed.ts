@@ -18,6 +18,8 @@ async function main() {
     data: {
       email: TEST_EMAIL,
       passwordHash: await hashPassword(TEST_PASSWORD),
+      // 開発用ユーザーは確認済み扱いにする(毎回メール確認するのは開発の邪魔なため)
+      emailVerifiedAt: new Date(),
     },
   });
 
