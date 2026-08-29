@@ -10,5 +10,13 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
 
+  # 開発用のメールキャッチャー。アプリからは SMTP サーバーに見えるが、
+  # 外部には一切送信せず、受信したメールをブラウザ(http://localhost:8025)で確認できる
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - "1025:1025" # SMTP(アプリからの送信先)
+      - "8025:8025" # Web UI(受信メールの確認)
+
 volumes:
   db_data:

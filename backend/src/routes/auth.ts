@@ -11,6 +11,8 @@ import {
 } from "../lib/session.js";
 import { loginSchema, signupSchema } from "../schemas/auth.js";
 import { validationHook } from "../lib/validation.js";
+import { createVerificationToken } from "../lib/verification.js";
+import { sendVerificationEmail } from "../lib/mail.js";
 import { PrismaClientKnownRequestError } from "../generated/prisma/internal/prismaNamespace.js";
 
 const app = new Hono();
@@ -68,6 +70,17 @@ app.post(
       // 登録が終わったらそのままログイン状態にする(都度ログインさせない)
       const session = await createSession(user.id);
       setSessionCookie(c, session.id, session.expiresAt);
+
+      // メールアドレス確認メールを送る。
+      // 送信失敗で登録自体を失敗させない: メールサーバーの不調で
+      // アカウントが作れないのは本末転倒なため、エラーはログに残すだけにする
+      // (確認メールの再送機能は将来の拡張候補)
+      try {
+        const token = await createVerificationToken(user.id);
+        await sendVerificationEmail(user.email, token);
+      } catch (err) {
+        console.error("確認メールの送信に失敗しました:", err);
+      }
 
       // passwordHash は絶対に返さない。必要な項目だけを明示して返す
       return c.json({ id: user.id, email: user.email }, 201);
