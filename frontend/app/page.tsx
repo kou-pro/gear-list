@@ -26,6 +26,12 @@ export default async function Home() {
         <h1 className="text-2xl font-bold">Gear List</h1>
         <div className="flex items-center gap-3">
           <span className="text-sm opacity-70">{user.email}</span>
+          {/* メールアドレス未確認の場合だけバッジを出す(ログイン自体は制限しない方針) */}
+          {!user.emailVerified && (
+            <span className="rounded bg-amber-500/15 px-2 py-0.5 text-xs text-amber-600 dark:text-amber-400">
+              メール未確認
+            </span>
+          )}
           <LogoutButton />
         </div>
       </div>

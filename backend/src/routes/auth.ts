@@ -11,7 +11,10 @@ import {
 } from "../lib/session.js";
 import { loginSchema, signupSchema } from "../schemas/auth.js";
 import { validationHook } from "../lib/validation.js";
-import { createVerificationToken } from "../lib/verification.js";
+import {
+  consumeVerificationToken,
+  createVerificationToken,
+} from "../lib/verification.js";
 import { sendVerificationEmail } from "../lib/mail.js";
 import { PrismaClientKnownRequestError } from "../generated/prisma/internal/prismaNamespace.js";
 
@@ -141,6 +144,28 @@ app.post("/logout", async (c) => {
   // 未ログイン状態で呼ばれても 204 を返す。
   // 「ログアウトしたい」という意図は既に満たされているため、エラーにする理由がない
   return c.body(null, 204);
+});
+
+// POST /verify-email — 実際のURLは POST /api/auth/verify-email
+// ログイン不要で呼べる(トークン自体が「メールを受信できた」証明のため)。
+// 例: 登録した端末と別の端末でメールを開いた場合でも確認できる
+app.post("/verify-email", async (c) => {
+  const body = await c.req.json().catch(() => null);
+  const token = body?.token;
+
+  if (typeof token !== "string" || token === "") {
+    return c.json({ error: "トークンが指定されていません" }, 400);
+  }
+
+  const verified = await consumeVerificationToken(token);
+
+  // 不在・期限切れ・使用済みを区別しない。
+  // 区別すると「このトークンは実在したが期限切れ」等の情報を与えてしまう
+  if (!verified) {
+    return c.json({ error: "リンクが無効か、期限切れです" }, 400);
+  }
+
+  return c.json({ verified: true });
 });
 
 // GET /me — 実際のURLは GET /api/auth/me

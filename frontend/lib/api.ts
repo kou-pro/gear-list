@@ -6,6 +6,8 @@ const API_BASE = "http://localhost:8787/api";
 export type AuthUser = {
   id: number;
   email: string;
+  // メールアドレス確認済みか(/auth/me が返す。未確認バッジの表示判断に使う)
+  emailVerified: boolean;
 };
 
 /**
@@ -217,3 +219,14 @@ export async function fetchCurrentUser(): Promise<AuthUser | null> {
   return await res.json();
 }
 
+// POST /api/auth/verify-email — メール内リンクのトークンで確認を完了する。
+// 成功なら true、無効・期限切れなら false(エラーではなく結果として扱う)
+export async function verifyEmail(token: string): Promise<boolean> {
+  const res = await apiFetch("/auth/verify-email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+  });
+
+  return res.ok;
+}

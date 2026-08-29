@@ -21,3 +21,35 @@ export async function createVerificationToken(userId: number): Promise<string> {
 
   return id;
 }
+
+// トークンを検証し、有効なら「確認済み」にして使い捨てる。
+// 成功なら true、無効(不在・期限切れ)なら false を返す
+export async function consumeVerificationToken(
+  tokenId: string,
+): Promise<boolean> {
+  const token = await prisma.verificationToken.findUnique({
+    where: { id: tokenId },
+  });
+
+  if (!token) {
+    return false;
+  }
+
+  if (token.expiresAt < new Date()) {
+    // 期限切れはその場で掃除する(セッションと同じ方針)
+    await prisma.verificationToken.delete({ where: { id: tokenId } });
+    return false;
+  }
+
+  // 「確認済みにする」と「トークンを消す」は必ずセットで成立させたいので
+  // トランザクションにまとめる(片方だけ成功すると、使い済みトークンが残って再利用できてしまう)
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: token.userId },
+      data: { emailVerifiedAt: new Date() },
+    }),
+    prisma.verificationToken.delete({ where: { id: tokenId } }),
+  ]);
+
+  return true;
+}
