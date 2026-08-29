@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { fetchList } from "@/lib/api";
+import { notFound, redirect } from "next/navigation";
+import { fetchCurrentUser, fetchList } from "@/lib/api";
 import CreateItemForm from "@/components/CreateItemForm";
 import ItemCheckbox from "@/components/ItemCheckbox";
 import DeleteItemButton from "@/components/DeleteItemButton";
@@ -12,6 +12,12 @@ export default async function ListDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  // 未ログインならログイン画面へ。API 側でも 401 になるが、画面としては誘導するのが自然
+  const user = await fetchCurrentUser();
+  if (!user) {
+    redirect("/login");
+  }
+
   const { id } = await params;
 
   // URL 由来の id は文字列なので数値へ変換する。

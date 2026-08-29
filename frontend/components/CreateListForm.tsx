@@ -15,7 +15,7 @@ export default function CreateListForm() {
 
   const router = useRouter();
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     // ブラウザ標準のフォーム送信(ページ全体がリロードされる)を止める
     e.preventDefault();
     setSubmitting(true);

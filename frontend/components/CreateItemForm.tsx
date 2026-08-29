@@ -16,7 +16,7 @@ export default function CreateItemForm({ listId }: Props) {
 
   const router = useRouter();
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
