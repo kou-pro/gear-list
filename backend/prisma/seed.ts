@@ -9,6 +9,10 @@ const TEST_PASSWORD = "password123";
 
 async function main() {
   // ── 何度実行しても同じ結果になるよう、先に全消しする(冪等性の確保) ──
+  // Job は User と外部キーで繋がっていない(誰のための仕事かは payload の中にあるだけ)ため、
+  // Cascade では消えない。検証で積んだ Job が残らないよう明示的に削除する
+  await prisma.job.deleteMany();
+
   // User を消せば GearList・GearItem・Session も onDelete: Cascade で連動して消える。
   // 削除の起点が GearList から User に変わった点に注意
   await prisma.user.deleteMany();

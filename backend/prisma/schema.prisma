@@ -81,3 +81,33 @@ model GearItem {
   gearList   GearList @relation(fields: [gearListId], references: [id], onDelete: Cascade)
   gearListId Int
 }
+
+// Job の状態。pending → processing → completed、
+// または失敗して pending に戻る(リトライ)/ dead(諦め)
+enum JobStatus {
+  pending
+  processing
+  completed
+  dead
+}
+
+// 「後でやる仕事」を1行1件で保存する。これが Queue の実体。
+// HTTP リクエストの処理から切り離したい仕事(メール送信など)をここに積み、
+// Worker が別プロセスで取り出して処理する
+model Job {
+  id          Int       @id @default(autoincrement())
+  type        String // "send_verification_email" など。Worker がこの値で処理を振り分ける
+  payload     Json // 仕事に必要なデータ(宛先・トークンなど)
+  status      JobStatus @default(pending)
+  attempts    Int       @default(0) // 実行を試みた回数(獲得時に +1 する)
+  maxAttempts Int       @default(3)
+  runAt       DateTime  @default(now()) // この時刻以降に実行してよい。リトライの待ち時間はここで表現する
+  lastError   String? // 直近の失敗理由。dead になった原因を後から追える
+  startedAt   DateTime? // 最後に処理を開始した時刻(将来の可視性タイムアウト用に記録だけしておく)
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Worker は毎秒「pending かつ runAt <= now」を引くため、この複合インデックスが効く
+  @@index([status, runAt])
+}
