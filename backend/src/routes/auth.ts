@@ -15,7 +15,7 @@ import {
   consumeVerificationToken,
   createVerificationToken,
 } from "../lib/verification.js";
-import { sendVerificationEmail } from "../lib/mail.js";
+import { enqueue } from "../lib/queue.js";
 import { PrismaClientKnownRequestError } from "../generated/prisma/internal/prismaNamespace.js";
 
 const app = new Hono();
@@ -74,16 +74,17 @@ app.post(
       const session = await createSession(user.id);
       setSessionCookie(c, session.id, session.expiresAt);
 
-      // メールアドレス確認メールを送る。
-      // 送信失敗で登録自体を失敗させない: メールサーバーの不調で
-      // アカウントが作れないのは本末転倒なため、エラーはログに残すだけにする
-      // (確認メールの再送機能は将来の拡張候補)
-      try {
-        const token = await createVerificationToken(user.id);
-        await sendVerificationEmail(user.email, token);
-      } catch (err) {
-        console.error("確認メールの送信に失敗しました:", err);
-      }
+      // メール送信はレスポンスを待たせないよう、キューに積むだけにする。
+      // 実際の送信と、失敗したときのリトライは worker.ts の責務。
+      //
+      // 以前はここで await sendVerificationEmail(...) していたため、SMTP が無応答だと
+      // 登録自体は 0.3 秒で終わっているのにユーザーが 30 秒待たされ、しかも
+      // 送信に失敗したメールは誰も再送しなかった(TASKS.md「3-1 実測結果」)。
+      //
+      // enqueue は user.create と同じ DB への INSERT なので、これが失敗する状況では
+      // そもそも登録自体が成立していない。よって送信失敗を握りつぶす try/catch は不要になった
+      const token = await createVerificationToken(user.id);
+      await enqueue("send_verification_email", { to: user.email, token });
 
       // passwordHash は絶対に返さない。必要な項目だけを明示して返す
       return c.json({ id: user.id, email: user.email }, 201);
