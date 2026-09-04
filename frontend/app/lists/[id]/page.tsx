@@ -2,8 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { fetchCurrentUser, fetchList } from "@/lib/api";
 import CreateItemForm from "@/components/CreateItemForm";
-import ItemCheckbox from "@/components/ItemCheckbox";
-import DeleteItemButton from "@/components/DeleteItemButton";
+import ItemList from "@/components/ItemList";
 
 // 動的セグメント [id] の値は params として渡される。
 // Next.js 15 以降、params は Promise なので await で取り出す
@@ -48,23 +47,9 @@ export default async function ListDetailPage({
 
       <CreateItemForm listId={list.id} />
 
-      <ul className="mt-6">
-        {list.items?.map((item) => (
-          <li
-            key={item.id}
-            className="flex items-center justify-between border-b border-black/10 py-3 last:border-b-0 dark:border-white/15"
-          >
-            <label className="flex flex-1 cursor-pointer items-center gap-3">
-              <ItemCheckbox id={item.id} checked={item.checked} />
-              {/* チェック済みは打ち消し線で視覚的に区別する */}
-              <span className={item.checked ? "line-through opacity-50" : ""}>
-                {item.name} ×{item.quantity}
-              </span>
-            </label>
-            <DeleteItemButton id={item.id} name={item.name} />
-          </li>
-        ))}
-      </ul>
+      {/* 装備一覧と Undo は操作履歴(Client の state)を共有するため、
+          ItemList にまとめて委ねる。このページ自体は Server Component のまま */}
+      <ItemList items={list.items ?? []} />
     </main>
   );
 }
