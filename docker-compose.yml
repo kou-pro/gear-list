@@ -10,6 +10,26 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
 
+  # テスト専用の DB。テストは毎回全データを消すため、開発用(db)とはコンテナごと分ける。
+  # ホスト側のポートを 5433 にずらして、開発用の 5432 とぶつからないようにしている。
+  # volumes を付けないのは、テストのデータを残す必要がないため(コンテナを消せば一緒に消える)
+  # 参考: https://www.prisma.io/docs/orm/prisma-client/testing/integration-testing
+  db-test:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: gearlist
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: gearlist_test
+    ports:
+      - "5433:5432"
+    # 起動直後の Postgres はまだ接続を受け付けないため、pg_isready で準備完了を判定する。
+    # npm run test:int は `docker compose up --wait` でこれが healthy になるまで待ってから進む
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "gearlist", "-d", "gearlist_test"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
   # 開発用のメールキャッチャー。アプリからは SMTP サーバーに見えるが、
   # 外部には一切送信せず、受信したメールをブラウザ(http://localhost:8025)で確認できる
   mailpit:
