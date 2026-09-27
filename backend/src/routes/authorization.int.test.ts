@@ -1,28 +1,10 @@
 import { beforeEach, describe, expect, test } from "vitest";
-import app from "../app.js";
 import { prisma } from "../lib/prisma.js";
 import { createUserWithList, type Fixture } from "../test/factories.js";
+import { send } from "../test/request.js";
 
 // DB に無い ID。入力検証(1〜2147483647)は通るが、該当するレコードは無い
 const MISSING_ID = 2147483647;
-
-// method・Cookie・JSON ボディ付きでリクエストを送る。毎回同じ設定を書かないための関数
-async function send(
-  method: string,
-  path: string,
-  cookie?: string,
-  body?: object,
-): Promise<Response> {
-  return app.request(path, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      // cookie があるときだけ Cookie ヘッダを足す
-      ...(cookie ? { Cookie: cookie } : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-}
 
 let a: Fixture;
 let b: Fixture;

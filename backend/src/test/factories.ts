@@ -1,3 +1,4 @@
+import { hashPassword } from "../lib/password.js";
 import { prisma } from "../lib/prisma.js";
 import { createSession } from "../lib/session.js";
 
@@ -36,4 +37,17 @@ export async function createUserWithList(email: string): Promise<Fixture> {
   });
 
   return { userId, cookie, listId: list.id, itemId: list.items[0].id };
+}
+
+// 本物のパスワードハッシュを持つユーザーを作る(ログイン API のテスト用)。
+// scrypt の計算が約0.3秒かかるため、ログインを試すテストでだけ使う
+export async function createUserWithPassword(
+  email: string,
+  password: string,
+): Promise<{ userId: number }> {
+  const user = await prisma.user.create({
+    data: { email, passwordHash: await hashPassword(password) },
+  });
+
+  return { userId: user.id };
 }
