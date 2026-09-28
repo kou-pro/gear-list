@@ -1,38 +1,12 @@
 // .env を process.env に読み込む。PrismaClient が DATABASE_URL を参照するため、
-// 他のどの import よりも先に評価される必要がある(必ず1行目に置く)
+// 他のどの import よりも先に評価される必要がある(必ず1行目に置く)。
+// app.ts ではなくここで読み込むのは、テストが app.ts だけを import したときに
+// 開発用の .env(開発 DB の接続先)を読み込ませないため
 import "dotenv/config";
 import { serve } from "@hono/node-server";
-import { Hono } from "hono";
-import listsRoute from "./routes/lists.js";
-import itemsRoute from "./routes/items.js";
-import authRoute from "./routes/auth.js";
-import { cors } from "hono/cors";
+import app from "./app.js";
 
-const app = new Hono();
-
-// credentials: true を付けないと、ブラウザは Cookie を付けて送らず、
-// レスポンスの Set-Cookie も無視する。認証を Cookie で行うため必須。
-// なお credentials を使う場合、origin にワイルドカード("*")は指定できない
-// (今回は元から localhost:3000 に限定しているため問題ない)
-app.use(
-  "/api/*",
-  cors({ origin: "http://localhost:3000", credentials: true }),
-);
-
-app.get("/api/health", (c) => {
-  return c.json({ status: "ok" });
-});
-
-// lists サブアプリを /api/lists 配下にマウント(パスは先頭 "/" 付きが公式の記法)
-app.route("/api/lists", listsRoute);
-
-// items サブアプリを /api/items 配下にマウント。
-// 作成だけは親リストに紐づくため POST /api/lists/:listId/items として lists 側に置いている
-app.route("/api/items", itemsRoute);
-
-// 認証系。ログイン前でもアクセスできる必要があるため、認証 middleware は適用しない
-app.route("/api/auth", authRoute);
-
+// サーバーの起動だけを担当する(npm run dev / npm start のときに実行される)
 serve(
   {
     fetch: app.fetch,
